@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CreditCard, Lock, Shield, CheckCircle } from 'lucide-react';
+import { CreditCard, Lock, Shield, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface StripePaymentProps {
   onSuccess: () => void;
@@ -14,7 +14,15 @@ export const StripePayment: React.FC<StripePaymentProps> = ({ onSuccess, isProce
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  // Luhn Algorithm for basic validation
+  // Validation States (null = untouched, true = valid, false = invalid)
+  const [validation, setValidation] = useState({
+    card: null as boolean | null,
+    expiry: null as boolean | null,
+    cvc: null as boolean | null,
+    name: null as boolean | null
+  });
+
+  // Luhn Algorithm
   const isValidLuhn = (val: string) => {
     let sum = 0;
     let shouldDouble = false;
@@ -34,21 +42,20 @@ export const StripePayment: React.FC<StripePaymentProps> = ({ onSuccess, isProce
     setError(null);
     const cleanNum = cardNumber.replace(/\s/g, '');
     
-    // Basic validations
-    if (cleanNum.length < 16 || !isValidLuhn(cleanNum)) {
-      setError("Numéro de carte invalide.");
-      return;
-    }
-    if (expiry.length < 5) {
-      setError("Date d'expiration invalide.");
-      return;
-    }
-    if (cvc.length < 3) {
-      setError("Code CVC invalide.");
-      return;
-    }
-    if (name.length < 3) {
-      setError("Nom du titulaire requis.");
+    const isCardValid = cleanNum.length >= 16 && isValidLuhn(cleanNum);
+    const isExpiryValid = expiry.length === 5; // Simplified check
+    const isCvcValid = cvc.length >= 3;
+    const isNameValid = name.length >= 3;
+
+    setValidation({
+      card: isCardValid,
+      expiry: isExpiryValid,
+      cvc: isCvcValid,
+      name: isNameValid
+    });
+
+    if (!isCardValid || !isExpiryValid || !isCvcValid || !isNameValid) {
+      setError("Veuillez vérifier les informations en rouge.");
       return;
     }
 
@@ -56,7 +63,8 @@ export const StripePayment: React.FC<StripePaymentProps> = ({ onSuccess, isProce
   };
 
   const formatCardNumber = (v: string) => {
-    return v.replace(/\s+/g, '').replace(/[^0-9]/gi, '').match(/.{1,4}/g)?.join(' ') || v;
+    const clean = v.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    return clean.match(/.{1,4}/g)?.join(' ') || clean;
   };
 
   const formatExpiry = (v: string) => {
@@ -65,13 +73,18 @@ export const StripePayment: React.FC<StripePaymentProps> = ({ onSuccess, isProce
     return clean;
   };
 
+  const getInputClass = (isValid: boolean | null) => {
+    if (isValid === null) return "border-gray-200 focus:border-brand-500";
+    return isValid ? "border-green-500 bg-green-50 focus:border-green-500" : "border-red-500 bg-red-50 focus:border-red-500";
+  };
+
   return (
     <div className="bg-white p-8 rounded-sm shadow-soft border-t-4 border-brand-500">
       <div className="flex items-center justify-between mb-8">
         <h3 className="font-serif text-2xl text-gray-900">Paiement Sécurisé</h3>
         <div className="flex gap-2 opacity-60 grayscale hover:grayscale-0 transition-all">
-          <div className="h-6 w-10 bg-gray-200 rounded"></div> {/* Visa Placeholder */}
-          <div className="h-6 w-10 bg-gray-200 rounded"></div> {/* MC Placeholder */}
+          <div className="h-6 w-10 bg-gray-200 rounded flex items-center justify-center text-[8px] font-bold text-gray-500 border">VISA</div>
+          <div className="h-6 w-10 bg-gray-200 rounded flex items-center justify-center text-[8px] font-bold text-gray-500 border">MC</div>
         </div>
       </div>
 
@@ -87,13 +100,16 @@ export const StripePayment: React.FC<StripePaymentProps> = ({ onSuccess, isProce
 
       <form onSubmit={handlePay} className="space-y-6">
         <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Titulaire</label>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Titulaire de la carte</label>
           <input 
             type="text" 
             placeholder="NOM PRÉNOM"
-            className="w-full bg-white border border-gray-200 p-4 rounded-sm text-sm font-medium focus:border-brand-500 outline-none transition-all placeholder-gray-300"
+            className={`w-full bg-white border p-4 rounded-sm text-sm font-medium outline-none transition-all placeholder-gray-300 ${getInputClass(validation.name)}`}
             value={name}
-            onChange={e => setName(e.target.value.toUpperCase())}
+            onChange={e => {
+              setName(e.target.value.toUpperCase());
+              setValidation(prev => ({...prev, name: null}));
+            }}
           />
         </div>
 
@@ -105,10 +121,14 @@ export const StripePayment: React.FC<StripePaymentProps> = ({ onSuccess, isProce
               type="text" 
               placeholder="0000 0000 0000 0000"
               maxLength={19}
-              className="w-full bg-white border border-gray-200 pl-11 pr-4 py-4 rounded-sm text-sm font-medium focus:border-brand-500 outline-none transition-all font-mono placeholder-gray-300"
+              className={`w-full bg-white border pl-11 pr-4 py-4 rounded-sm text-sm font-medium outline-none transition-all font-mono placeholder-gray-300 ${getInputClass(validation.card)}`}
               value={cardNumber}
-              onChange={e => setCardNumber(formatCardNumber(e.target.value))}
+              onChange={e => {
+                setCardNumber(formatCardNumber(e.target.value));
+                setValidation(prev => ({...prev, card: null}));
+              }}
             />
+            {validation.card === true && <CheckCircle size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500" />}
           </div>
         </div>
 
@@ -119,9 +139,12 @@ export const StripePayment: React.FC<StripePaymentProps> = ({ onSuccess, isProce
               type="text" 
               placeholder="MM/AA"
               maxLength={5}
-              className="w-full bg-white border border-gray-200 p-4 rounded-sm text-sm font-medium focus:border-brand-500 outline-none transition-all text-center placeholder-gray-300"
+              className={`w-full bg-white border p-4 rounded-sm text-sm font-medium outline-none transition-all text-center placeholder-gray-300 ${getInputClass(validation.expiry)}`}
               value={expiry}
-              onChange={e => setExpiry(formatExpiry(e.target.value))}
+              onChange={e => {
+                setExpiry(formatExpiry(e.target.value));
+                setValidation(prev => ({...prev, expiry: null}));
+              }}
             />
           </div>
           <div>
@@ -131,9 +154,12 @@ export const StripePayment: React.FC<StripePaymentProps> = ({ onSuccess, isProce
                 type="text" 
                 placeholder="123"
                 maxLength={4}
-                className="w-full bg-white border border-gray-200 p-4 rounded-sm text-sm font-medium focus:border-brand-500 outline-none transition-all text-center placeholder-gray-300"
+                className={`w-full bg-white border p-4 rounded-sm text-sm font-medium outline-none transition-all text-center placeholder-gray-300 ${getInputClass(validation.cvc)}`}
                 value={cvc}
-                onChange={e => setCvc(e.target.value.replace(/\D/g, ''))}
+                onChange={e => {
+                  setCvc(e.target.value.replace(/\D/g, ''));
+                  setValidation(prev => ({...prev, cvc: null}));
+                }}
               />
               <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300" size={14} />
             </div>
@@ -141,8 +167,8 @@ export const StripePayment: React.FC<StripePaymentProps> = ({ onSuccess, isProce
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-500 text-xs p-3 rounded-sm flex items-center">
-            <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-2"></span>
+          <div className="bg-red-50 text-red-500 text-xs p-3 rounded-sm flex items-center border border-red-100 animate-shake">
+            <AlertCircle size={14} className="mr-2 shrink-0" />
             {error}
           </div>
         )}
@@ -150,7 +176,7 @@ export const StripePayment: React.FC<StripePaymentProps> = ({ onSuccess, isProce
         <button 
           type="submit" 
           disabled={isProcessing}
-          className="w-full bg-brand-500 hover:bg-brand-600 text-brand-900 font-bold py-5 mt-4 text-xs uppercase tracking-widest transition-all shadow-lg flex justify-center items-center gap-2"
+          className="w-full bg-brand-500 hover:bg-brand-600 text-brand-900 font-bold py-5 mt-4 text-xs uppercase tracking-widest transition-all shadow-lg flex justify-center items-center gap-2 transform active:scale-[0.99]"
         >
           {isProcessing ? (
              <>

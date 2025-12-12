@@ -1,7 +1,7 @@
 export interface Car {
   id: string;
   name: string;
-  category: string; // e.g., 'Compacte', 'SUV', 'Berline'
+  category: string;
   image: string;
   pricePerDay: number;
   seats: number;
@@ -16,12 +16,21 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  phone?: string;
-  isGuest?: boolean;
+  phone: string;
+  address: string;
+  zipCode: string;
+  city: string;
+  country: string;
+  birthDate: string;
+  licenseNumber: string;
+  licenseDate: string;
+  licenseCountry: string;
+  isProfessional: boolean;
 }
 
 export interface SearchParams {
   location: string;
+  returnLocation?: string; // Added separate return location
   startDate: string;
   startTime: string;
   endDate: string;
@@ -33,6 +42,7 @@ export interface ExtraOption {
   name: string;
   price: number;
   description: string;
+  type: 'insurance' | 'mileage' | 'extra'; // Categorize options
 }
 
 export interface CarFilters {
@@ -43,11 +53,13 @@ export interface CarFilters {
 }
 
 export interface BookingState {
-  step: number; // 0: Search, 1: Vehicle, 2: Options, 3: Auth/Driver, 4: Payment, 5: Success
+  step: number; 
   searchParams: SearchParams;
   filters: CarFilters;
   selectedCar: Car | null;
-  selectedExtras: string[]; // IDs of selected extras
+  selectedExtras: string[]; 
+  selectedInsurance: string; // ID of selected insurance
+  selectedMileage: string; // ID of selected mileage
   driverDetails: User | null;
 }
 

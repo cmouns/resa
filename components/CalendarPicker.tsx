@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface CalendarPickerProps {
   startDate: string;
@@ -51,7 +51,6 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({ startDate, endDa
       } else {
         setInternalEnd(selectedDateStr);
         onChange(internalStart, selectedDateStr);
-        // Don't close immediately to let user see selection
         setTimeout(onClose, 300);
       }
     }
@@ -73,16 +72,16 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({ startDate, endDa
   };
 
   return (
-    <div className="absolute top-full left-0 z-50 mt-2 p-4 bg-brand-900 border border-brand-500 rounded-lg shadow-2xl w-80">
-      <div className="flex justify-between items-center mb-4 text-brand-50">
-        <button onClick={() => changeMonth(-1)} className="p-1 hover:text-brand-500"><ChevronLeft size={20} /></button>
-        <span className="font-serif font-bold text-lg">{MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}</span>
-        <button onClick={() => changeMonth(1)} className="p-1 hover:text-brand-500"><ChevronRight size={20} /></button>
+    <div className="absolute top-full left-0 z-50 mt-2 p-6 bg-[#111111] border border-brand-500 rounded-sm shadow-2xl w-96 animate-fade-in-up">
+      <div className="flex justify-between items-center mb-6">
+        <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-white/10 rounded-full text-brand-500 transition-colors"><ChevronLeft size={20} /></button>
+        <span className="font-serif font-bold text-xl text-[#D4AF37] tracking-wider">{MONTHS[currentDate.getMonth()]} {currentDate.getFullYear()}</span>
+        <button onClick={() => changeMonth(1)} className="p-2 hover:bg-white/10 rounded-full text-brand-500 transition-colors"><ChevronRight size={20} /></button>
       </div>
 
-      <div className="grid grid-cols-7 mb-2">
+      <div className="grid grid-cols-7 mb-4">
         {DAYS.map(d => (
-          <div key={d} className="text-center text-xs font-bold text-brand-400 uppercase tracking-wide">{d}</div>
+          <div key={d} className="text-center text-[10px] font-bold text-gray-500 uppercase tracking-widest">{d}</div>
         ))}
       </div>
 
@@ -102,25 +101,25 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({ startDate, endDa
               key={day}
               onClick={() => handleDayClick(day)}
               className={`
-                h-10 w-full flex flex-col items-center justify-center text-sm rounded-md transition-all relative
-                ${selected ? 'bg-brand-500 text-brand-900 font-bold shadow-glow' : ''}
-                ${range ? 'bg-brand-900/50 border border-brand-500/30 text-brand-100' : ''}
-                ${!selected && !range ? 'hover:bg-brand-800 text-brand-50' : ''}
+                h-10 w-full flex flex-col items-center justify-center text-sm font-medium transition-all relative rounded-sm
+                ${selected ? 'bg-[#D4AF37] text-black font-bold shadow-lg scale-105 z-10' : ''}
+                ${range ? 'bg-white/10 text-brand-100' : ''}
+                ${!selected && !range ? 'text-gray-300 hover:text-white hover:bg-white/5' : ''}
                 ${holiday && !selected ? 'text-red-400' : ''}
               `}
             >
               <span>{day}</span>
-              {holiday && <span className="w-1 h-1 bg-red-400 rounded-full absolute bottom-1"></span>}
+              {holiday && <span className="w-1 h-1 bg-[#D4AF37] rounded-full absolute bottom-1.5 shadow-[0_0_5px_#D4AF37]"></span>}
             </button>
           );
         })}
       </div>
       
-      <div className="mt-4 pt-3 border-t border-brand-800 flex justify-between items-center">
-         <p className="text-xs text-brand-300">
-           {internalStart && !internalEnd ? 'Sélectionnez le retour' : 'Sélectionnez les dates'}
+      <div className="mt-6 pt-4 border-t border-gray-800 flex justify-between items-center">
+         <p className="text-xs text-gray-400 italic font-serif">
+           {internalStart && !internalEnd ? 'Sélectionnez le retour...' : 'Votre séjour de rêve commence ici.'}
          </p>
-         <button onClick={onClose} className="text-xs text-brand-500 hover:text-white uppercase font-bold tracking-wider">Fermer</button>
+         <button onClick={onClose} className="text-xs text-[#D4AF37] hover:text-white uppercase font-bold tracking-widest transition-colors">Fermer</button>
       </div>
     </div>
   );

@@ -1,17 +1,14 @@
 import React from 'react';
 import { BookingState } from '../types';
-import { EXTRA_OPTIONS } from '../constants';
-import { Calendar, MapPin, Check, Car as CarIcon, User as UserIcon } from 'lucide-react';
+import { Calendar, MapPin, Clock } from 'lucide-react';
 
-// Simple date formatter
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
-  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+  return new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'numeric', year: 'numeric' }).format(d);
 };
 
 const getDays = (start: string, end: string) => {
-  if (!start || !end) return 1;
   const s = new Date(start);
   const e = new Date(end);
   const diffTime = Math.abs(e.getTime() - s.getTime());
@@ -21,108 +18,71 @@ const getDays = (start: string, end: string) => {
 
 interface BookingSummaryProps {
   booking: BookingState;
+  showTotal?: boolean;
 }
 
-export const BookingSummary: React.FC<BookingSummaryProps> = ({ booking }) => {
-  if (!booking.selectedCar) return (
-    <div className="bg-brand-900 rounded-lg p-6 border border-brand-800 text-center">
-       <CarIcon className="mx-auto text-brand-700 mb-2 opacity-50" size={32} />
-       <p className="text-brand-400 text-sm italic">Sélectionnez un véhicule pour voir le détail.</p>
-    </div>
-  );
-
+export const BookingSummary: React.FC<BookingSummaryProps> = ({ booking, showTotal = true }) => {
   const days = getDays(booking.searchParams.startDate, booking.searchParams.endDate);
-  const carTotal = booking.selectedCar.pricePerDay * days;
   
-  const selectedExtrasList = EXTRA_OPTIONS.filter(opt => booking.selectedExtras.includes(opt.id));
-  const extrasTotal = selectedExtrasList.reduce((acc, opt) => acc + (opt.price * days), 0);
+  // Calculate total
+  let total = 0;
+  if (booking.selectedCar) {
+    total += booking.selectedCar.pricePerDay * days;
+  }
+  // Add extras calculation logic here if needed for total display
   
-  const total = carTotal + extrasTotal;
-
   return (
-    <div className="bg-white rounded-lg p-6 border border-brand-200 shadow-xl relative overflow-hidden sticky top-24">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-brand-400 via-brand-500 to-brand-400"></div>
+    <div className="bg-white p-6 shadow-soft rounded-sm border border-gray-100">
+      <h3 className="font-serif text-xl text-gray-900 mb-6 pb-4 border-b border-gray-100">Récapitulatif de votre réservation</h3>
       
-      <h3 className="font-serif font-bold text-xl text-brand-900 mb-6 flex justify-between items-end">
-        <span>Récapitulatif</span>
-        <span className="text-xs font-sans font-normal text-gray-400 uppercase tracking-widest">Devis</span>
-      </h3>
-      
-      {/* Car Info */}
-      <div className="flex items-start mb-6 pb-6 border-b border-dashed border-gray-200">
-        <div className="w-20 h-14 bg-gray-100 rounded overflow-hidden mr-4 border border-gray-200">
-            <img src={booking.selectedCar.image} alt={booking.selectedCar.name} className="w-full h-full object-cover" />
-        </div>
-        <div>
-          <h4 className="font-bold text-brand-900 leading-tight">{booking.selectedCar.name}</h4>
-          <p className="text-xs text-brand-600 uppercase tracking-wide font-bold mt-1">{booking.selectedCar.category}</p>
-        </div>
-      </div>
+      <div className="space-y-8 relative">
+        {/* Connector Line */}
+        <div className="absolute left-[7px] top-8 bottom-8 w-[1px] bg-gray-200 z-0"></div>
 
-      {/* Dates & Loc */}
-      <div className="space-y-3 mb-6 pb-6 border-b border-dashed border-gray-200">
-        <div className="flex items-start">
-           <MapPin size={14} className="text-brand-500 mt-0.5 mr-2 shrink-0" />
-           <div>
-              <p className="text-[10px] text-gray-400 uppercase font-bold">Lieu de prise en charge</p>
-              <p className="text-sm font-medium text-gray-800">{booking.searchParams.location || "Non défini"}</p>
-           </div>
-        </div>
-        <div className="flex items-start">
-           <Calendar size={14} className="text-brand-500 mt-0.5 mr-2 shrink-0" />
-           <div>
-              <p className="text-[10px] text-gray-400 uppercase font-bold">Période de location</p>
-              <p className="text-sm font-medium text-gray-800">
-                {formatDate(booking.searchParams.startDate)} - {formatDate(booking.searchParams.endDate)}
-              </p>
-              <p className="text-xs text-brand-600 mt-0.5">{days} jours • {booking.searchParams.startTime} à {booking.searchParams.endTime}</p>
-           </div>
-        </div>
-      </div>
-
-      {/* Driver Info if Present */}
-      {booking.driverDetails && (
-        <div className="mb-6 pb-6 border-b border-dashed border-gray-200 animate-fade-in">
-           <div className="flex items-start">
-             <UserIcon size={14} className="text-brand-500 mt-0.5 mr-2 shrink-0" />
-             <div>
-                <p className="text-[10px] text-gray-400 uppercase font-bold">Conducteur Principal</p>
-                <p className="text-sm font-medium text-brand-900">{booking.driverDetails.firstName} {booking.driverDetails.lastName}</p>
-                <p className="text-xs text-gray-500">{booking.driverDetails.email}</p>
+        {/* DEPART */}
+        <div className="relative z-10">
+          <div className="flex items-center mb-2">
+            <div className="w-4 h-4 rounded-full bg-gray-200 border-2 border-white mr-3 shadow-sm"></div>
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Départ</span>
+          </div>
+          <div className="ml-7">
+             <div className="flex items-center text-sm font-bold text-gray-900 mb-1">
+               <MapPin size={14} className="mr-2 text-brand-500" />
+               Agence : {booking.searchParams.location}
              </div>
-           </div>
+             <div className="flex items-center text-sm text-gray-600">
+               <Calendar size={14} className="mr-2 text-gray-400" />
+               Le {formatDate(booking.searchParams.startDate)} à {booking.searchParams.startTime}
+             </div>
+          </div>
+        </div>
+
+        {/* RETOUR */}
+        <div className="relative z-10">
+          <div className="flex items-center mb-2">
+             <div className="w-4 h-4 rounded-full bg-black border-2 border-white mr-3 shadow-sm"></div>
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Retour</span>
+          </div>
+          <div className="ml-7">
+             <div className="flex items-center text-sm font-bold text-gray-900 mb-1">
+               <MapPin size={14} className="mr-2 text-brand-500" />
+               Agence : {booking.searchParams.location}
+             </div>
+             <div className="flex items-center text-sm text-gray-600">
+               <Calendar size={14} className="mr-2 text-gray-400" />
+               Le {formatDate(booking.searchParams.endDate)} à {booking.searchParams.endTime}
+             </div>
+          </div>
+        </div>
+      </div>
+
+      {booking.selectedCar && showTotal && (
+        <div className="mt-8 pt-6 border-t border-gray-100 animate-fade-in">
+           <button className="w-full bg-black text-white text-sm font-bold py-3 uppercase tracking-widest hover:bg-brand-500 hover:text-black transition-colors rounded-sm">
+             Modifier
+           </button>
         </div>
       )}
-
-      {/* Pricing Breakdown */}
-      <div className="space-y-2 mb-6">
-        <div className="flex justify-between text-sm">
-          <span className="text-gray-600">Location de base</span>
-          <span className="font-medium text-gray-900">{carTotal.toFixed(2)}€</span>
-        </div>
-        
-        {selectedExtrasList.map(extra => (
-          <div key={extra.id} className="flex justify-between text-sm animate-fade-in">
-            <span className="text-gray-600 flex items-center">
-              <Check size={12} className="mr-1 text-brand-500" /> {extra.name}
-            </span>
-            <span className="font-medium text-gray-900">{(extra.price * days).toFixed(2)}€</span>
-          </div>
-        ))}
-        
-        <div className="flex justify-between text-sm pt-2">
-           <span className="text-gray-500">Taxes et frais de service</span>
-           <span className="text-brand-600 font-medium text-xs bg-brand-50 px-2 py-0.5 rounded border border-brand-100">Offerts</span>
-        </div>
-      </div>
-
-      {/* Total */}
-      <div className="pt-4 border-t border-brand-900">
-        <div className="flex justify-between items-end">
-          <span className="font-serif font-bold text-brand-900 text-lg">Total TTC</span>
-          <span className="font-serif font-bold text-2xl text-brand-600">{total.toFixed(2)}€</span>
-        </div>
-      </div>
     </div>
   );
 };

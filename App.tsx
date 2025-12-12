@@ -1,21 +1,23 @@
 import React, { useState } from 'react';
 import { Navbar } from './components/Navbar';
-import { HeroSearch } from './components/HeroSearch';
-import { CarCard } from './components/CarCard';
-import { ExtraSelection } from './components/ExtraSelection';
-import { AuthModule } from './components/AuthModule';
-import { StripePayment } from './components/StripePayment';
+import { StepIndicator } from './components/StepIndicator';
+import { SidebarSearch } from './components/SidebarSearch';
 import { BookingSummary } from './components/BookingSummary';
+import { CarCard } from './components/CarCard';
+import { OptionsStep } from './components/OptionsStep';
+import { InfoStep } from './components/InfoStep';
+import { StripePayment } from './components/StripePayment';
 import { AiAssistant } from './components/AiAssistant';
 import { BookingState, Car, SearchParams, User } from './types';
-import { MOCK_CARS } from './constants';
-import { Check, ChevronRight, Home, Shield, AlertCircle } from 'lucide-react';
+import { MOCK_CARS, INSURANCE_OPTIONS, MILEAGE_OPTIONS, EXTRA_OPTIONS } from './constants';
+import { Check } from 'lucide-react';
 
 const App: React.FC = () => {
+  // State
   const [booking, setBooking] = useState<BookingState>({
     step: 0,
     searchParams: {
-      location: '',
+      location: 'Aéroport',
       startDate: new Date().toISOString().split('T')[0],
       startTime: '10:00',
       endDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
@@ -29,40 +31,58 @@ const App: React.FC = () => {
     },
     selectedCar: null,
     selectedExtras: [],
+    selectedInsurance: 'insurance_basic',
+    selectedMileage: 'km_200',
     driverDetails: null
   });
 
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // --- Calculations ---
+  const getDays = () => {
+    const s = new Date(booking.searchParams.startDate);
+    const e = new Date(booking.searchParams.endDate);
+    return Math.ceil(Math.abs(e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) || 1;
+  };
+
+  const calculateTotal = (carPrice: number) => {
+    const days = getDays();
+    let total = carPrice * days;
+    
+    // Add insurance
+    const insurance = INSURANCE_OPTIONS.find(i => i.id === booking.selectedInsurance);
+    if (insurance) total += insurance.price * days;
+
+    // Add mileage
+    const mileage = MILEAGE_OPTIONS.find(m => m.id === booking.selectedMileage);
+    if (mileage) total += mileage.price * days; // assuming price per day for demo
+
+    // Add extras
+    booking.selectedExtras.forEach(id => {
+      const extra = EXTRA_OPTIONS.find(e => e.id === id);
+      if (extra) total += extra.price * days;
+    });
+
+    return total;
+  };
+
   // --- Handlers ---
-  const handleSearch = (params: SearchParams) => {
-    setBooking(prev => ({ ...prev, searchParams: params, step: 1 }));
-    window.scrollTo(0, 0);
+  const handleSearch = () => {
+    // Just refresh results or scroll top, simplified for demo
+    window.scrollTo(0,0);
   };
 
   const handleSelectCar = (car: Car) => {
-    setBooking(prev => ({ ...prev, selectedCar: car, step: 2 }));
+    setBooking(prev => ({ ...prev, selectedCar: car, step: 1 }));
     window.scrollTo(0, 0);
   };
 
-  const handleToggleExtra = (id: string) => {
-    setBooking(prev => {
-      const selected = prev.selectedExtras.includes(id) 
-        ? prev.selectedExtras.filter(e => e !== id) 
-        : [...prev.selectedExtras, id];
-      return { ...prev, selectedExtras: selected };
-    });
-  };
-
-  const handleOptionsConfirmed = () => {
-    setBooking(prev => ({ ...prev, step: 3 })); // Go to Auth/Driver step
-    window.scrollTo(0, 0);
-  };
-
-  const handleAuthenticated = (user: User) => {
-    setBooking(prev => ({ ...prev, driverDetails: user, step: 4 })); // Go to Payment
-    setShowAuthModal(false); // Close modal if it was open via navbar
+  const handleNextStep = (data?: any) => {
+    if (booking.step === 2 && data) {
+       setBooking(prev => ({ ...prev, driverDetails: data, step: 3 }));
+    } else {
+       setBooking(prev => ({ ...prev, step: prev.step + 1 }));
+    }
     window.scrollTo(0, 0);
   };
 
@@ -70,186 +90,135 @@ const App: React.FC = () => {
     setIsProcessing(true);
     setTimeout(() => {
       setIsProcessing(false);
-      setBooking(prev => ({ ...prev, step: 5 }));
+      setBooking(prev => ({ ...prev, step: 4 })); // Success
       window.scrollTo(0, 0);
     }, 2000);
   };
 
-  // --- Render Steps Indicator ---
-  const renderStepIndicator = () => {
-    const steps = [
-      { num: 1, label: 'Recherche' },
-      { num: 2, label: 'Véhicule' },
-      { num: 3, label: 'Options' },
-      { num: 4, label: 'Conducteur' },
-      { num: 5, label: 'Paiement' }
-    ];
-
-    return (
-      <div className="py-12 flex justify-center overflow-x-auto px-4">
-        <div className="flex items-center space-x-4 md:space-x-8 lg:space-x-12 min-w-max">
-          {steps.map((s, idx) => {
-            const isActive = booking.step >= idx;
-            const isCurrent = booking.step === idx;
-            return (
-              <div key={s.num} className="flex flex-col items-center relative group">
-                <div className={`
-                  w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center border transition-all duration-300 z-10 bg-[#FAFAF9]
-                  ${isActive ? 'border-brand-500 text-brand-500' : 'border-gray-300 text-gray-300'}
-                  ${isCurrent ? 'bg-brand-500 text-brand-900 border-brand-500 font-bold shadow-lg scale-110' : ''}
-                `}>
-                  {isActive && !isCurrent ? <Check size={16} /> : s.num}
-                </div>
-                <span className={`
-                  text-[9px] md:text-[10px] font-bold uppercase tracking-widest mt-3 transition-colors duration-300 absolute -bottom-6 w-32 text-center
-                  ${isActive ? 'text-gray-900' : 'text-gray-300'}
-                `}>
-                  {s.label}
-                </span>
-                {/* Connecting Line */}
-                {idx < steps.length - 1 && (
-                  <div className={`
-                    absolute top-4 md:top-5 left-8 md:left-10 w-4 md:w-8 lg:w-12 h-[1px] -z-0
-                    ${booking.step > idx ? 'bg-brand-500' : 'bg-gray-200'}
-                  `}></div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-[#FAFAF9] font-sans flex flex-col">
-      <Navbar 
-        onOpenAuth={() => setShowAuthModal(true)} 
-        currentUser={booking.driverDetails}
-      />
+      <Navbar />
+      <StepIndicator currentStep={booking.step} />
 
-      <div className="flex-1 flex flex-col">
-        {/* Page Title */}
-        <div className="text-center mt-12 mb-4 animate-fade-in">
-          <p className="text-xs font-bold text-brand-500 uppercase tracking-widest mb-3">Réservation en ligne</p>
-          <h1 className="font-serif text-4xl md:text-5xl text-gray-900">Planifiez votre trajet</h1>
-        </div>
-
-        {/* Wizard Steps */}
-        {renderStepIndicator()}
-
-        <main className="max-w-[1400px] mx-auto w-full px-6 pb-20 mt-10">
-          
-          {/* STEP 1: SEARCH (Recherche) */}
-          {booking.step === 0 && (
-             <HeroSearch onSearch={handleSearch} initialParams={booking.searchParams} />
-          )}
-
-          {/* STEP 2: VEHICLE (Véhicule) */}
-          {booking.step === 1 && (
-             <div className="animate-fade-in-up">
-                <div className="flex items-center gap-2 mb-8 text-gray-500 text-sm">
-                   <Home size={14} />
-                   <ChevronRight size={14} />
-                   <span>Résultats de recherche</span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                   {MOCK_CARS.map(car => (
-                      <div key={car.id} onClick={() => handleSelectCar(car)} className="cursor-pointer transform hover:-translate-y-1 transition-transform">
-                        <CarCard car={car} onSelect={() => {}} />
-                      </div>
-                   ))}
-                </div>
+      <main className="max-w-[1400px] mx-auto w-full px-6 pb-20">
+        
+        {booking.step === 4 ? (
+          // --- SUCCESS STEP ---
+          <div className="max-w-2xl mx-auto text-center animate-scale-in py-10">
+             <div className="w-24 h-24 bg-brand-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl">
+               <Check size={40} className="text-black" />
              </div>
-          )}
-
-          {/* STEP 3: OPTIONS (Options) */}
-          {booking.step === 2 && (
-             <div className="animate-fade-in grid grid-cols-1 lg:grid-cols-12 gap-12">
-                <div className="lg:col-span-8">
-                   <ExtraSelection 
-                     selectedIds={booking.selectedExtras} 
-                     onToggle={handleToggleExtra}
-                     onContinue={handleOptionsConfirmed}
-                   />
-                </div>
-                <div className="lg:col-span-4">
-                   <BookingSummary booking={booking} />
-                </div>
-             </div>
-          )}
-
-          {/* STEP 4: DRIVER / AUTH (Conducteur) */}
-          {booking.step === 3 && (
-             <div className="animate-fade-in grid grid-cols-1 lg:grid-cols-12 gap-12">
-                <div className="lg:col-span-8">
-                   <div className="mb-6 flex items-center bg-brand-50 border border-brand-100 p-4 rounded-sm">
-                      <Shield className="text-brand-500 mr-3" size={20} />
-                      <p className="text-sm text-gray-700">Connectez-vous pour finaliser votre réservation et bénéficier de vos avantages fidélité.</p>
-                   </div>
-                   <AuthModule onAuthenticated={handleAuthenticated} />
-                </div>
-                <div className="lg:col-span-4">
-                   <BookingSummary booking={booking} />
-                </div>
-             </div>
-          )}
-
-          {/* STEP 5: PAYMENT (Paiement) */}
-          {booking.step === 4 && booking.selectedCar && (
-            <div className="animate-fade-in grid grid-cols-1 lg:grid-cols-12 gap-12">
-               <div className="lg:col-span-8">
-                  <div className="mb-8">
-                    <h2 className="font-serif text-2xl text-gray-900 mb-2">Finalisation</h2>
-                    <p className="text-gray-500 text-sm">Veuillez régler le montant pour confirmer la réservation.</p>
-                  </div>
-                  <StripePayment 
-                    onSuccess={handlePaymentSuccess}
-                    isProcessing={isProcessing}
-                    totalAmount={
-                      // Recalculating total quickly (better in helper)
-                      (booking.selectedCar.pricePerDay * 3) + (booking.selectedExtras.length * 15 * 3) // Mock calc
-                    }
+             <h2 className="font-serif text-4xl text-gray-900 mb-6">Réservation Confirmée</h2>
+             <p className="text-gray-600 mb-10 leading-relaxed">
+               Merci {booking.driverDetails?.firstName}. Votre demande a bien été prise en compte.<br/>
+               Un email de confirmation vient de vous être envoyé.
+             </p>
+             <button onClick={() => window.location.reload()} className="text-xs font-bold uppercase tracking-widest text-brand-900 border-b-2 border-brand-500 pb-1 hover:text-brand-600 transition-colors">
+               Retour à l'accueil
+             </button>
+          </div>
+        ) : (
+          <div className="flex flex-col lg:flex-row gap-8 items-start">
+             
+             {/* --- LEFT SIDEBAR --- */}
+             <aside className="w-full lg:w-1/4 min-w-[320px] sticky top-40">
+                {booking.step === 0 ? (
+                  <SidebarSearch 
+                    params={booking.searchParams}
+                    onChange={(p) => setBooking(prev => ({...prev, searchParams: p}))}
+                    onSearch={handleSearch}
                   />
-               </div>
-               <div className="lg:col-span-4">
+                ) : (
                   <BookingSummary booking={booking} />
-               </div>
-            </div>
-          )}
+                )}
 
-          {/* STEP 6: SUCCESS */}
-          {booking.step === 5 && (
-            <div className="max-w-2xl mx-auto text-center animate-scale-in py-10">
-               <div className="w-24 h-24 bg-brand-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-xl">
-                 <Check size={40} className="text-brand-900" />
-               </div>
-               <h2 className="font-serif text-4xl text-gray-900 mb-6">Réservation Confirmée</h2>
-               <p className="text-gray-600 mb-10 leading-relaxed">
-                 Merci {booking.driverDetails?.firstName}. Votre véhicule de prestige a été réservé avec succès.<br/>
-                 Un email de confirmation contenant votre contrat vient de vous être envoyé à {booking.driverDetails?.email}.
-               </p>
-               <button onClick={() => window.location.reload()} className="text-xs font-bold uppercase tracking-widest text-brand-900 border-b-2 border-brand-500 pb-1 hover:text-brand-600 transition-colors">
-                 Retour à l'accueil
-               </button>
-            </div>
-          )}
+                {/* Recap Total for steps 1, 2, 3 */}
+                {booking.step > 0 && booking.selectedCar && (
+                   <div className="mt-6 bg-white p-6 shadow-soft rounded-sm border border-gray-100">
+                      <h4 className="font-serif text-lg font-bold text-gray-900 mb-4">Récapitulatif du montant</h4>
+                      <div className="flex justify-between items-end">
+                         <span className="text-sm text-gray-500">Montant (hors option)</span>
+                         <span className="font-bold text-gray-900">{(booking.selectedCar.pricePerDay * getDays()).toFixed(2)}€</span>
+                      </div>
+                      <div className="flex justify-between items-end mt-2 pt-2 border-t border-gray-100">
+                         <span className="font-bold text-lg text-gray-900">Montant TOTAL</span>
+                         <span className="font-bold text-xl text-brand-600">{calculateTotal(booking.selectedCar.pricePerDay).toFixed(2)}€ TTC</span>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1">dont TVA incluse</p>
+                   </div>
+                )}
+             </aside>
 
-        </main>
-      </div>
+             {/* --- MAIN CONTENT --- */}
+             <div className="flex-1 w-full">
+                
+                {/* STEP 1: RESULTS */}
+                {booking.step === 0 && (
+                   <div>
+                      <div className="mb-6 pb-4 border-b border-gray-200">
+                         <h2 className="font-serif text-2xl font-bold text-gray-900">{MOCK_CARS.length} Résultats</h2>
+                         <p className="text-sm text-gray-500">Vous avez déjà un compte ? <span className="font-bold underline cursor-pointer">Connectez-vous</span></p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         {MOCK_CARS.map(car => (
+                            <CarCard 
+                              key={car.id} 
+                              car={car} 
+                              totalPrice={car.pricePerDay * getDays()}
+                              onSelect={handleSelectCar} 
+                            />
+                         ))}
+                      </div>
+                   </div>
+                )}
 
-      {/* Global Auth Modal (Navbar Trigger) */}
-      {showAuthModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-           <div className="w-full max-w-md relative">
-              <button onClick={() => setShowAuthModal(false)} className="absolute -top-12 right-0 text-white hover:text-brand-500">
-                Fermer
-              </button>
-              <AuthModule onAuthenticated={handleAuthenticated} />
-           </div>
-        </div>
-      )}
+                {/* STEP 2: OPTIONS */}
+                {booking.step === 1 && booking.selectedCar && (
+                   <OptionsStep 
+                      selectedCar={booking.selectedCar}
+                      totalCarPrice={booking.selectedCar.pricePerDay * getDays()}
+                      selectedInsurance={booking.selectedInsurance}
+                      selectedMileage={booking.selectedMileage}
+                      selectedExtras={booking.selectedExtras}
+                      onSetInsurance={(id) => setBooking(prev => ({...prev, selectedInsurance: id}))}
+                      onSetMileage={(id) => setBooking(prev => ({...prev, selectedMileage: id}))}
+                      onToggleExtra={(id) => setBooking(prev => {
+                         const exists = prev.selectedExtras.includes(id);
+                         return {
+                            ...prev,
+                            selectedExtras: exists 
+                              ? prev.selectedExtras.filter(e => e !== id) 
+                              : [...prev.selectedExtras, id]
+                         };
+                      })}
+                      onNext={() => handleNextStep()}
+                   />
+                )}
+
+                {/* STEP 3: INFO */}
+                {booking.step === 2 && (
+                   <InfoStep onNext={handleNextStep} />
+                )}
+
+                {/* STEP 4: PAYMENT (Simplified integration for Step 3 in screenshot context) */}
+                {booking.step === 3 && booking.selectedCar && (
+                   <div className="animate-fade-in-up">
+                      <div className="mb-8">
+                        <h2 className="font-serif text-2xl font-bold text-gray-900 mb-2">Paiement</h2>
+                        <p className="text-gray-500 text-sm">Sécurisez votre réservation maintenant.</p>
+                      </div>
+                      <StripePayment 
+                        onSuccess={handlePaymentSuccess}
+                        isProcessing={isProcessing}
+                        totalAmount={calculateTotal(booking.selectedCar.pricePerDay)}
+                      />
+                   </div>
+                )}
+
+             </div>
+          </div>
+        )}
+      </main>
 
       <AiAssistant />
     </div>
