@@ -1,0 +1,4 @@
+{
+  "name": "FleeteeClone - Module de Réservation",
+  "description": "Une application React complète simulant un module de réservation de location de voitures style Fleetee, incluant une interface de paiement style Stripe et un assistant IA Gemini."
+}
